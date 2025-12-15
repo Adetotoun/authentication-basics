@@ -69,7 +69,10 @@ const forgotPassword = async (req,res) => {
            return res.status(404).json({message: 'User not found'});
         }
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
         user.otp = otp;
+        user.otpExpiry = otpExpiry;
         await user.save();
         return res.status(200).json({message: 'OTP sent successfully', otp});
     } catch (error) {
@@ -87,6 +90,9 @@ const resetPassword = async (req,res) => {
         const user = await User.findOne({otp});
         if(!user){
             return res.status(404).json({message: 'Invalid OTP'});
+        }
+        if(user.otpExpiry < new Date()){
+        return res.status(404).json({messaage: 'OTP Expired'});
         }
         const hashedPassword = await bcrypt.hash(newPassword,10);
         user.password = hashedPassword;
