@@ -1,5 +1,6 @@
 const User = require('../models/auth.models');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const signup = async (req,res) => {
     const {userName,email,password} = req.body;
@@ -51,7 +52,10 @@ const login = async (req,res) => {
         if(!comparePassword){
             return res.status(401).json({message: 'invalid Credentials'});
         }
-        return res.status(200).json({message: 'Login successful!'});
+
+        const token = await jwt.sign({userId: user._id, name: user.userName}, process.env.JWT_SECRET, {expiresIn: "1h"});
+
+        return res.status(200).json({message: 'Login successful!', token});
     } catch (error) {
         console.error('Error during login', error);
         return res.status(500).json({message: "Internal Server Error"});
@@ -152,6 +156,19 @@ const resendOtp = async (req,res) => {
     }
 }
 
+const getAllUsers = async (req,res) => {
+   const {userId} = req.user;
+   try {
+    const adminUser = await User.findById(userId);
+    if(adminUser.role !== "admin"){
+        return res.status(403).json({message: "Access Denied"});
+    }
+    const users = await User.find().select('-password -otp -otpexpiry')
+    return res.status(200).json(users)
+   } catch (error) {
+    console.error("Error fetching users", error);
+    return res.status(500).json({message: "Internal Server Error"});
+   } 
+}
 
-
-module.exports = {signup, login, forgotPassword, resetPassword,verifyOtp,resendOtp};
+module.exports = {signup, login, forgotPassword, resetPassword,verifyOtp,resendOtp, getAllUsers};
